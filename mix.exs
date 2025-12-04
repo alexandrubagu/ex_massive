@@ -33,7 +33,8 @@ defmodule ExMassive.MixProject do
     [
       {:tesla, "~> 1.11"},
       {:jason, "~> 1.4"},
-      {:hackney, "~> 1.20"}
+      {:hackney, "~> 1.20"},
+      {:websockex, "~> 0.4.3"}
     ]
   end
 end

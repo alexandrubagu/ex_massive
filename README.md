@@ -6,7 +6,7 @@ Elixir SDK for the [Massive.com](https://massive.com) financial data API. Provid
 
 - Simple, clean API design
 - Bearer token authentication
-- Comprehensive endpoint coverage:
+- **REST API** - Comprehensive endpoint coverage:
   - Stocks (tickers, aggregates, trades, quotes, technical indicators, fundamentals)
   - Options (contracts, chains, aggregates)
   - Futures (contracts, aggregates)
@@ -14,6 +14,11 @@ Elixir SDK for the [Massive.com](https://massive.com) financial data API. Provid
   - Forex (tickers, conversion, aggregates)
   - Crypto (tickers, aggregates, trades)
   - Economy (treasury yields, inflation data)
+- **WebSocket API** - Real-time data streaming:
+  - Real-time and 15-minute delayed feeds
+  - Subscribe to trades, quotes, and aggregates
+  - Support for all asset classes
+  - Automatic authentication and reconnection
 - Full test coverage with Tesla Mock
 - Easy to test in your application using Tesla.Mock
 
@@ -152,6 +157,101 @@ client = ExMassive.client()
 # Indices
 {:ok, response} = ExMassive.Indices.get_ticker(client, "I:SPX")
 {:ok, response} = ExMassive.Indices.get_aggregates(client, "I:SPX", 1, "day", "2023-01-01", "2023-12-31")
+```
+
+## WebSocket Streaming
+
+### Basic Usage
+
+```elixir
+# Define a handler module
+defmodule MyHandler do
+  def handle_message(message, state) do
+    IO.inspect(message, label: "Market Data")
+    {:ok, state}
+  end
+
+  def handle_connect(state) do
+    IO.puts("Connected to Massive WebSocket!")
+    {:ok, state}
+  end
+
+  def handle_disconnect(reason, state) do
+    IO.puts("Disconnected: #{inspect(reason)}")
+    {:ok, state}
+  end
+end
+
+# Start a WebSocket connection
+{:ok, ws} = ExMassive.WebSocketClient.start_link(
+  api_key: "your_api_key",
+  handler: MyHandler,
+  realtime: false  # Use 15-minute delayed feed (set true for real-time)
+)
+
+# Subscribe to channels
+ExMassive.WebSocketClient.subscribe(ws, ["AM.AAPL", "AM.MSFT"])
+
+# Subscribe to trades for a symbol
+ExMassive.WebSocketClient.subscribe(ws, "T.GOOGL")
+
+# Subscribe to all tickers for a channel type
+ExMassive.WebSocketClient.subscribe(ws, "AM.*")
+
+# Unsubscribe from channels
+ExMassive.WebSocketClient.unsubscribe(ws, ["AM.AAPL"])
+
+# Get current subscriptions
+ExMassive.WebSocketClient.get_subscriptions(ws)
+```
+
+### Available WebSocket Channels
+
+#### Stocks
+- `AM.{ticker}` - Minute aggregates (OHLC per minute)
+- `A.{ticker}` - Second aggregates (OHLC per second)
+- `T.{ticker}` - Trades
+- `Q.{ticker}` - Quotes
+
+#### Using Wildcards
+- `AM.*` - All stocks minute aggregates
+- `T.*` - All stock trades
+- `Q.AAPL` - Quotes for AAPL only
+
+### Example: Processing Real-Time Trade Data
+
+```elixir
+defmodule TradeProcessor do
+  def handle_message(%{"ev" => "T", "sym" => symbol, "p" => price, "s" => size}, state) do
+    IO.puts("Trade: #{symbol} - Price: #{price}, Size: #{size}")
+    # Process the trade...
+    {:ok, state}
+  end
+
+  def handle_message(%{"ev" => "AM"} = aggregate, state) do
+    # Handle minute aggregate
+    IO.inspect(aggregate, label: "Minute Bar")
+    {:ok, state}
+  end
+
+  def handle_message(message, state) do
+    # Handle other message types
+    {:ok, state}
+  end
+
+  def handle_connect(state), do: {:ok, state}
+  def handle_disconnect(_reason, state), do: {:ok, state}
+end
+
+{:ok, ws} = ExMassive.WebSocketClient.start_link(
+  api_key: "your_api_key",
+  handler: TradeProcessor,
+  handler_state: %{trades_count: 0},
+  realtime: true
+)
+
+# Subscribe to trades and minute aggregates
+ExMassive.WebSocketClient.subscribe(ws, ["T.AAPL", "T.MSFT", "AM.AAPL"])
 ```
 
 ## Testing

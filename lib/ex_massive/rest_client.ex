@@ -1,6 +1,6 @@
-defmodule ExMassive.Client do
+defmodule ExMassive.RestClient do
   @moduledoc """
-  HTTP client adapter for making requests to the Massive API.
+  REST HTTP client for making requests to the Massive API.
   """
 
   @base_url "https://api.massive.com"

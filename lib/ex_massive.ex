@@ -23,7 +23,7 @@ defmodule ExMassive do
   """
 
   @doc """
-  Creates a new Tesla client with Bearer authentication.
+  Creates a new REST client with Bearer authentication.
 
   ## Options
 
@@ -38,6 +38,6 @@ defmodule ExMassive do
 
   """
   def client(opts \\ []) do
-    ExMassive.Client.new(opts)
+    ExMassive.RestClient.new(opts)
   end
 end
