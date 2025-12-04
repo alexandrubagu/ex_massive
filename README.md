@@ -19,6 +19,12 @@ Elixir SDK for the [Massive.com](https://massive.com) financial data API. Provid
   - Subscribe to trades, quotes, and aggregates
   - Support for all asset classes
   - Automatic authentication and reconnection
+- **Flat Files** - Bulk historical data access:
+  - S3-based bulk data downloads
+  - CSV and JSON formats
+  - Compressed (gzip) files
+  - Historical trades, quotes, aggregates
+  - Presigned URLs for direct access
 - Full test coverage with Tesla Mock
 - Easy to test in your application using Tesla.Mock
 
@@ -252,6 +258,133 @@ end
 
 # Subscribe to trades and minute aggregates
 ExMassive.WebSocketClient.subscribe(ws, ["T.AAPL", "T.MSFT", "AM.AAPL"])
+```
+
+## Flat Files (Bulk Data)
+
+### Configuration
+
+Configure your S3 credentials for Flat Files access:
+
+```elixir
+config :ex_massive,
+  s3_access_key_id: "your_s3_access_key",
+  s3_secret_access_key: "your_s3_secret_key",
+  s3_region: "us-east-1",
+  s3_bucket: "flatfiles.massive.com"
+```
+
+### Basic Usage
+
+```elixir
+# List available files for a specific date
+{:ok, files} = ExMassive.FlatFiles.list_files(
+  asset_class: "stocks",
+  data_type: "trades",
+  date: "2024-01-15"
+)
+
+# Download a file
+{:ok, content} = ExMassive.FlatFiles.download_file(
+  "stocks/trades/2024/01/15/trades.csv.gz"
+)
+
+# Download and decompress automatically
+{:ok, csv_content} = ExMassive.FlatFiles.download_and_decompress(
+  "stocks/trades/2024/01/15/trades.csv.gz"
+)
+
+# Get a presigned URL (valid for 1 hour)
+{:ok, url} = ExMassive.FlatFiles.get_presigned_url(
+  "stocks/trades/2024/01/15/trades.csv.gz"
+)
+
+# Stream large files
+ExMassive.FlatFiles.stream_file("stocks/trades/2024/01/15/trades.csv.gz")
+|> Stream.each(fn chunk -> process_chunk(chunk) end)
+|> Stream.run()
+```
+
+### Available Data Types
+
+Flat Files are organized by:
+- **Asset Class**: `stocks`, `options`, `futures`, `forex`, `crypto`
+- **Data Type**: `trades`, `quotes`, `aggregates`, `snapshots`
+- **Date**: Organized by year/month/day
+
+### File Naming Pattern
+
+```
+{asset_class}/{data_type}/{year}/{month}/{day}/{filename}.{format}.gz
+```
+
+Examples:
+- `stocks/trades/2024/01/15/trades.csv.gz`
+- `options/quotes/2024/01/15/quotes.json.gz`
+- `crypto/aggregates/2024/01/15/minute_aggs.csv.gz`
+
+### Listing Files
+
+```elixir
+# List all stock trades for January 2024
+{:ok, files} = ExMassive.FlatFiles.list_files(
+  asset_class: "stocks",
+  data_type: "trades",
+  prefix: "stocks/trades/2024/01/"
+)
+
+# List with custom prefix
+{:ok, files} = ExMassive.FlatFiles.list_files(
+  prefix: "stocks/",
+  max_keys: 100
+)
+
+# Files include metadata
+files
+|> Enum.each(fn file ->
+  IO.puts("File: #{file.key}")
+  IO.puts("Size: #{file.size} bytes")
+  IO.puts("Last Modified: #{file.last_modified}")
+end)
+```
+
+### Downloading Files
+
+```elixir
+# Download compressed file
+{:ok, compressed} = ExMassive.FlatFiles.download_file(
+  "stocks/trades/2024/01/15/trades.csv.gz"
+)
+
+# Download and decompress
+{:ok, csv_data} = ExMassive.FlatFiles.download_and_decompress(
+  "stocks/trades/2024/01/15/trades.csv.gz"
+)
+
+# Parse CSV data
+csv_data
+|> String.split("\n")
+|> CSV.decode(headers: true)
+|> Enum.each(fn {:ok, row} ->
+  IO.inspect(row)
+end)
+```
+
+### Streaming Large Files
+
+For large files, use streaming to avoid loading everything into memory:
+
+```elixir
+# Stream and process in chunks
+ExMassive.FlatFiles.stream_file(
+  "stocks/trades/2024/01/15/trades.csv.gz",
+  1_048_576  # 1MB chunks
+)
+|> Stream.each(fn chunk ->
+  # Process each chunk
+  process_data(chunk)
+end)
+|> Stream.run()
 ```
 
 ## Testing

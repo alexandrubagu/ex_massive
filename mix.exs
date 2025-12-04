@@ -34,7 +34,10 @@ defmodule ExMassive.MixProject do
       {:tesla, "~> 1.11"},
       {:jason, "~> 1.4"},
       {:hackney, "~> 1.20"},
-      {:websockex, "~> 0.4.3"}
+      {:websockex, "~> 0.4.3"},
+      {:ex_aws, "~> 2.5"},
+      {:ex_aws_s3, "~> 2.5"},
+      {:sweet_xml, "~> 0.7"}
     ]
   end
 end
