@@ -1,0 +1,45 @@
+defmodule ExMassive.Crypto do
+  @moduledoc """
+  Crypto API endpoints for retrieving cryptocurrency data.
+  """
+
+  def get_ticker(client, ticker, opts \\ []) do
+    query = build_query(opts, [:date])
+    Tesla.get(client, "/v3/reference/tickers/#{ticker}", query: query)
+  end
+
+  def list_tickers(client, opts \\ []) do
+    query = build_query(opts, [:limit, :sort, :order])
+    Tesla.get(client, "/v3/reference/tickers", query: query)
+  end
+
+  def get_aggregates(client, ticker, multiplier, timespan, from, to, opts \\ []) do
+    query = build_query(opts, [:adjusted, :sort, :limit])
+    path = "/v2/aggs/ticker/#{ticker}/range/#{multiplier}/#{timespan}/#{from}/#{to}"
+    Tesla.get(client, path, query: query)
+  end
+
+  def get_previous_close(client, ticker, opts \\ []) do
+    query = build_query(opts, [:adjusted])
+    Tesla.get(client, "/v2/aggs/ticker/#{ticker}/prev", query: query)
+  end
+
+  def get_snapshot(client, ticker) do
+    Tesla.get(client, "/v2/snapshot/locale/global/markets/crypto/tickers/#{ticker}")
+  end
+
+  def get_all_snapshots(client, opts \\ []) do
+    query = build_query(opts, [:tickers])
+    Tesla.get(client, "/v2/snapshot/locale/global/markets/crypto/tickers", query: query)
+  end
+
+  def get_last_trade(client, from, to) do
+    Tesla.get(client, "/v1/last/crypto/#{from}/#{to}")
+  end
+
+  defp build_query(opts, allowed_keys) do
+    opts
+    |> Keyword.take(allowed_keys)
+    |> Enum.filter(fn {_k, v} -> not is_nil(v) end)
+  end
+end
